@@ -213,7 +213,15 @@ router.get("/files/raw", async (req, res) => {
     res.setHeader("Content-Type", mime);
     res.setHeader("Content-Length", stat.size);
     res.setHeader("Accept-Ranges", "bytes");
-    createReadStream(filePath).pipe(res);
+    const stream = createReadStream(filePath);
+    stream.on("error", (err) => {
+      if (!res.headersSent) {
+        res.status(500).json({ error: err.message ?? "Stream error" });
+      } else {
+        res.destroy(err);
+      }
+    });
+    stream.pipe(res);
   } catch (err: any) {
     res.status(404).json({ error: err?.message ?? "File not found" });
   }
