@@ -14,6 +14,7 @@ export * from "./execResult";
 export * from "./fileContent";
 export * from "./fileEntry";
 export * from "./fileEntryType";
+export * from "./getRawFileParams";
 export * from "./healthStatus";
 export * from "./healthStatusStatus";
 export * from "./listFilesParams";

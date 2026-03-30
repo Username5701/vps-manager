@@ -189,10 +189,12 @@ router.get("/files/raw", async (req, res) => {
   if (typeof rawPath !== "string" || !rawPath) {
     return res.status(400).json({ error: "path is required" });
   }
-  const filePath = path.resolve(rawPath);
-  if (filePath !== rawPath && !filePath.startsWith("/")) {
-    return res.status(400).json({ error: "Invalid path" });
+  // Require an absolute path so relative / traversal inputs (e.g. ../../etc/passwd) are rejected
+  if (!rawPath.startsWith("/")) {
+    return res.status(400).json({ error: "Path must be absolute" });
   }
+  // Resolve to canonicalise any embedded '..' segments (e.g. /foo/../bar → /bar)
+  const filePath = path.resolve(rawPath);
   try {
     const stat = await fs.stat(filePath);
     if (!stat.isFile()) {

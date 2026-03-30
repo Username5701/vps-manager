@@ -23,6 +23,7 @@ import type {
   ExecCommandBody,
   ExecResult,
   FileContent,
+  GetRawFileParams,
   HealthStatus,
   ListFilesParams,
   MkdirBody,
@@ -657,6 +658,100 @@ export const useRenameFile = <
 > => {
   return useMutation(getRenameFileMutationOptions(options));
 };
+
+/**
+ * @summary Stream raw file bytes with correct Content-Type header
+ */
+export const getGetRawFileUrl = (params: GetRawFileParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/files/raw?${stringifiedParams}`
+    : `/api/files/raw`;
+};
+
+export const getRawFile = async (
+  params: GetRawFileParams,
+  options?: RequestInit,
+): Promise<Blob> => {
+  return customFetch<Blob>(getGetRawFileUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRawFileQueryKey = (params?: GetRawFileParams) => {
+  return [`/api/files/raw`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetRawFileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRawFile>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: GetRawFileParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRawFile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRawFileQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRawFile>>> = ({
+    signal,
+  }) => getRawFile(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRawFile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRawFileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRawFile>>
+>;
+export type GetRawFileQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Stream raw file bytes with correct Content-Type header
+ */
+
+export function useGetRawFile<
+  TData = Awaited<ReturnType<typeof getRawFile>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  params: GetRawFileParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getRawFile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRawFileQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Execute a shell command

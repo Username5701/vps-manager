@@ -93,3 +93,10 @@ export type DeleteFileParams = {
   path: string;
   recursive?: boolean;
 };
+
+export type GetRawFileParams = {
+  /**
+   * Absolute path to the file (must start with /)
+   */
+  path: string;
+};

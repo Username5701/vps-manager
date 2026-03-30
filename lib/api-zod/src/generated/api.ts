@@ -103,6 +103,13 @@ export const RenameFileResponse = zod.object({
 });
 
 /**
+ * @summary Stream raw file bytes with correct Content-Type header
+ */
+export const GetRawFileQueryParams = zod.object({
+  path: zod.coerce.string(),
+});
+
+/**
  * @summary Execute a shell command
  */
 export const ExecCommandBody = zod.object({
