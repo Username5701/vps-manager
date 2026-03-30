@@ -223,7 +223,14 @@ router.get("/files/raw", async (req, res) => {
     });
     stream.pipe(res);
   } catch (err: any) {
-    res.status(404).json({ error: err?.message ?? "File not found" });
+    const code = err?.code;
+    if (code === "ENOENT") {
+      return res.status(404).json({ error: "File not found" });
+    }
+    if (code === "EACCES" || code === "EPERM") {
+      return res.status(403).json({ error: "Permission denied" });
+    }
+    res.status(500).json({ error: err?.message ?? "Failed to read file" });
   }
 });
 
