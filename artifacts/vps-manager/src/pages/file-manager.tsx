@@ -68,6 +68,9 @@ function EntryIcon({ name, type, size = 18 }: { name: string; type: FileType; si
 
 type DialogMode = "mkdir" | "newfile" | "rename" | "move" | "terminal";
 
+const stripAnsi = (str: string) =>
+  str.replace(/\x1B\[[0-9;]*[a-zA-Z]|\x1B\][^\x07\x1B]*(?:\x07|\x1B\\)|\x1B[A-Z\\[\]^_]|\r/g, "");
+
 // ── Component ────────────────────────────────────────────────────────────────
 
 export default function FileManager() {
@@ -193,7 +196,12 @@ export default function FileManager() {
       onSuccess: (result) => {
         setTermHistory((prev) => [
           ...prev,
-          { cmd: termCmd, stdout: result.stdout, stderr: result.stderr, code: result.exitCode },
+          {
+            cmd: termCmd,
+            stdout: stripAnsi(result.stdout),
+            stderr: stripAnsi(result.stderr),
+            code: result.exitCode,
+          },
         ]);
         setTermCmd("");
       },
@@ -235,8 +243,14 @@ export default function FileManager() {
   };
 
   const runCommand = () => {
-    if (!termCmd.trim() || execMut.isPending) return;
-    execMut.mutate({ data: { command: termCmd, cwd: currentPath !== "/" ? currentPath : null } });
+    const cmd = termCmd.trim();
+    if (!cmd || execMut.isPending) return;
+    if (cmd === "clear") {
+      setTermHistory([]);
+      setTermCmd("");
+      return;
+    }
+    execMut.mutate({ data: { command: cmd, cwd: currentPath !== "/" ? currentPath : null } });
   };
 
   const copyText = (text: string, id: number | "all") => {
