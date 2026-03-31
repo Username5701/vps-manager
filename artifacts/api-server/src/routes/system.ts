@@ -277,6 +277,33 @@ router.get("/system/git", (_req, res) => {
   }
 });
 
+router.get("/system/github-ssh", (_req, res) => {
+  const sshDir = "/root/.ssh";
+  const keyTypes = ["id_ed25519", "id_rsa", "id_ecdsa", "id_dsa"];
+  const keys: { type: string; publicKey: string; fingerprint: string }[] = [];
+
+  for (const keyType of keyTypes) {
+    const pubPath = path.join(sshDir, `${keyType}.pub`);
+    const privPath = path.join(sshDir, keyType);
+    if (fs.existsSync(pubPath) && fs.existsSync(privPath)) {
+      const publicKey = (() => { try { return fs.readFileSync(pubPath, "utf8").trim(); } catch { return ""; } })();
+      const fingerprint = run(`ssh-keygen -lf "${pubPath}" 2>/dev/null | awk '{print $2}'`);
+      if (publicKey) keys.push({ type: keyType, publicKey, fingerprint });
+    }
+  }
+
+  exec(
+    `ssh -T git@github.com -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=8 2>&1`,
+    { timeout: 12000 },
+    (_, stdout) => {
+      const out = (stdout ?? "").trim();
+      const connected = out.includes("successfully authenticated") || /^Hi .+!/.test(out);
+      const authUser = out.match(/Hi (.+?)!/)?.[1] ?? null;
+      res.json({ keys, connected, authUser, sshTestOutput: out });
+    }
+  );
+});
+
 router.post("/system/clear-cache", (_req, res) => {
   exec("sync", (syncErr) => {
     if (syncErr) {
