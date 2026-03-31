@@ -133,11 +133,7 @@ export default function LoginPage() {
 API_KEY=your-secret-key-here
 
 # Required — session encryption secret
-SESSION_SECRET=any-random-string
-
-# Optional — GitHub personal access token
-# (needed for Dev page profile editing)
-GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...`}</pre>
+SESSION_SECRET=any-random-string`}</pre>
               <p className="text-muted-foreground font-sans mt-3 text-[11px]">
                 The <span className="text-[#0ff4c6]">API_KEY</span> value is what you enter above to sign in.
               </p>
