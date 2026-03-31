@@ -445,10 +445,46 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
     }
   };
 
+  // Resolve a file path arg relative to cwd (handles ~, absolute, relative)
+  const resolvePath = (arg: string, cwd: string): string => {
+    const clean = arg.trim().replace(/^~/, "/root");
+    if (clean.startsWith("/")) return clean;
+    const base = cwd.endsWith("/") ? cwd : cwd + "/";
+    return base + clean;
+  };
+
   const runCommand = () => {
     const cmd = termCmd.trim();
     if (!cmd || execMut.isPending) return;
     if (cmd === "clear") { setTermHistory([]); setTermCmd(""); return; }
+
+    // Intercept editor commands → open in built-in file editor
+    const editorMatch = cmd.match(/^(nano|vim?|gedit|pico|emacs)\s+(.+)$/);
+    if (editorMatch) {
+      const filePath = resolvePath(editorMatch[2], termCwd);
+      setTermHistory((prev) => [...prev, {
+        cmd,
+        stdout: `Opening ${filePath} in built-in editor…`,
+        stderr: "",
+        code: 0,
+      }]);
+      setTermCmd("");
+      openFile(filePath);
+      return;
+    }
+
+    // Intercept other interactive / TUI commands that can't work without a PTY
+    const interactiveMatch = cmd.match(/^(htop|top|less|more|man|watch|mc|lynx|mutt|alpine|journalctl\s+-f|tail\s+-f)\b/);
+    if (interactiveMatch) {
+      setTermHistory((prev) => [...prev, {
+        cmd,
+        stdout: "",
+        stderr: `"${interactiveMatch[1]}" requires an interactive terminal (PTY) and is not supported here.\nTip: use the Logs panel for live log tailing, or run a non-interactive alternative.`,
+        code: 1,
+      }]);
+      setTermCmd("");
+      return;
+    }
 
     // Handle cd client-side to persist working directory
     const cdMatch = cmd.match(/^cd(?:\s+(.+))?$/);
