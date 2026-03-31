@@ -389,6 +389,38 @@ router.get("/system/git", (_req, res) => {
   }
 });
 
+// GET /system/git-info?path=/some/dir — git info for a specific directory (walks up to find .git)
+router.get("/system/git-info", (req, res) => {
+  try {
+    const dirPath = String(req.query.path ?? "").trim();
+    if (!dirPath || !fs.existsSync(dirPath)) return res.json({ isGit: false });
+
+    // Walk up to find .git root
+    let cur = dirPath;
+    let gitRoot: string | null = null;
+    for (let i = 0; i < 8; i++) {
+      if (fs.existsSync(path.join(cur, ".git"))) { gitRoot = cur; break; }
+      const parent = path.dirname(cur);
+      if (parent === cur) break;
+      cur = parent;
+    }
+    if (!gitRoot) return res.json({ isGit: false });
+
+    const branch = run(`git -C "${gitRoot}" rev-parse --abbrev-ref HEAD 2>/dev/null`);
+    const rawRemote = run(`git -C "${gitRoot}" remote get-url origin 2>/dev/null`);
+    const remote = rawRemote.replace(/\/\/[^:]+:[^@]+@/, "//***:***@"); // strip token from URL
+    const lastCommitRaw = run(`git -C "${gitRoot}" log -1 --format="%h|%s|%an|%ar" 2>/dev/null`);
+    const [hash, subject, author, ago] = lastCommitRaw.split("|");
+    const statusOut = run(`git -C "${gitRoot}" status --porcelain 2>/dev/null`);
+    const dirty = statusOut.length > 0;
+    const changedFiles = statusOut.split("\n").filter(Boolean).length;
+
+    res.json({ isGit: true, gitRoot, branch, remote, lastCommit: { hash, subject, author, ago }, dirty, changedFiles });
+  } catch (err) {
+    res.json({ isGit: false, error: String(err) });
+  }
+});
+
 router.get("/system/sites", (_req, res) => {
   const sitesDir = "/etc/nginx/sites-enabled";
   if (!fs.existsSync(sitesDir)) return res.json({ sites: [] });

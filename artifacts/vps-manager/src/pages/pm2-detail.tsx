@@ -10,6 +10,7 @@ import {
   CheckCircle2, XCircle, AlertCircle, FolderOpen,
   FileText, Terminal, Cpu, MemoryStick, Clock, Hash,
   ChevronRight, Layers, Copy, Check, Wrench, ChevronDown, ChevronUp,
+  GitBranch, GitCommit,
 } from "lucide-react";
 
 interface Pm2Detail {
@@ -79,6 +80,9 @@ export default function Pm2DetailPage() {
   const [showBuildPanel, setShowBuildPanel] = useState(false);
   const buildEndRef = useRef<HTMLDivElement>(null);
 
+  interface GitInfo { isGit: boolean; gitRoot?: string; branch?: string; remote?: string; lastCommit?: { hash: string; subject: string; author: string; ago: string }; dirty?: boolean; changedFiles?: number; }
+  const [gitInfo, setGitInfo] = useState<GitInfo | null>(null);
+
   const headers: Record<string, string> = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
 
   const fetchProc = useCallback(async (quiet = false) => {
@@ -113,6 +117,14 @@ export default function Pm2DetailPage() {
   useEffect(() => {
     if (logsEndRef.current) logsEndRef.current.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
+
+  useEffect(() => {
+    if (!proc?.cwd) return;
+    fetch(`/api/system/git-info?path=${encodeURIComponent(proc.cwd)}`, { headers })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setGitInfo(data); })
+      .catch(() => {});
+  }, [proc?.cwd]);
 
   async function doAction(action: "restart" | "stop" | "start" | "flush") {
     setActing(action);
@@ -392,6 +404,62 @@ export default function Pm2DetailPage() {
           </div>
         )}
 
+        {/* Git panel */}
+        {gitInfo?.isGit && (
+          <div className="rounded-2xl p-5" style={{ background: "#0f1117", border: "1px solid rgba(110,92,255,.18)" }}>
+            <div className="flex items-center gap-2 mb-4">
+              <GitBranch className="w-4 h-4" style={{ color: "#0ff4c6" }} />
+              <h2 className="text-sm font-bold text-foreground">Git</h2>
+              {gitInfo.dirty && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold ml-1"
+                  style={{ background: "rgba(255,170,0,.12)", color: "#ffaa00", border: "1px solid rgba(255,170,0,.3)" }}>
+                  {gitInfo.changedFiles} unstaged
+                </span>
+              )}
+              {!gitInfo.dirty && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold ml-1"
+                  style={{ background: "rgba(15,244,198,.1)", color: "#0ff4c6", border: "1px solid rgba(15,244,198,.25)" }}>
+                  clean
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <GitBranch className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                  <span className="text-muted-foreground flex-shrink-0">Branch</span>
+                  <span className="font-mono text-primary truncate">{gitInfo.branch || "—"}</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <GitCommit className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  <span className="text-muted-foreground flex-shrink-0">Commit</span>
+                  <div className="min-w-0">
+                    <span className="font-mono text-cyan-400 mr-1.5">{gitInfo.lastCommit?.hash || "—"}</span>
+                    <span className="text-foreground/80 truncate">{gitInfo.lastCommit?.subject || ""}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground flex-shrink-0">Author</span>
+                  <span className="font-mono text-foreground/80 truncate">{gitInfo.lastCommit?.author || "—"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground flex-shrink-0">When</span>
+                  <span className="font-mono text-foreground/80">{gitInfo.lastCommit?.ago || "—"}</span>
+                </div>
+                {gitInfo.remote && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-muted-foreground flex-shrink-0">Remote</span>
+                    <span className="font-mono text-foreground/60 truncate text-[10px] leading-4 mt-0.5"
+                      title={gitInfo.remote}>{gitInfo.remote.replace(/^https?:\/\//, "")}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Process info + CWD files */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Process info */}
@@ -556,7 +624,11 @@ function CwdFileList({
           setFiles(
             data.entries
               .slice(0, 20)
-              .map((e: { name: string; isDirectory: boolean; size: number }) => e)
+              .map((e: { name: string; type: string; size: number }) => ({
+                name: e.name,
+                isDirectory: e.type === "directory",
+                size: e.size,
+              }))
           );
         }
       })
