@@ -72,7 +72,7 @@ src/
 - `/` — Home: System dashboard with CPU/memory/disk stats
 - `/files` — File manager
 - `/terminal` — File manager with terminal panel open
-- `/dev` — Dev page (placeholder, Task #3)
+- `/dev` — Dev page (developer bio, GitHub repo card, fork walkthrough, support links)
 
 ### Features
 - **Browse**: Navigate the full filesystem including root (`/`)
@@ -90,7 +90,7 @@ src/
 - **Move**: Move a file or folder to any absolute destination path
 - **Terminal**: Run shell commands on the server; `cd` persists working directory
 - **System Info**: Real-time CPU, memory, disk, network, uptime on home page
-- **Search**: Search bar on home page that navigates to `/files?q=...`
+- **Search**: Search bar on home page that navigates to `/files?search=...`
 - **Clear Cache**: `POST /api/system/clear-cache` — runs `sync` + drops page cache
 
 ### API Endpoints
