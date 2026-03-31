@@ -36,7 +36,6 @@ import {
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -543,7 +542,7 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
     : listing?.entries ?? [];
 
   const FileList = ({ onNavigate }: { onNavigate?: () => void }) => (
-    <ScrollArea className="flex-1">
+    <div className="flex-1 min-h-0 overflow-y-auto">
       {searchQuery && (
         <div className="px-4 py-2 border-b border-border/30 flex items-center gap-2 bg-primary/5">
           <Search className="w-3.5 h-3.5 text-primary flex-shrink-0" />
@@ -650,7 +649,7 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
           })}
         </div>
       )}
-    </ScrollArea>
+    </div>
   );
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -903,7 +902,7 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
                       spellCheck={false}
                     />
                   ) : fileKind === "code" && fileContent ? (
-                    <ScrollArea className="flex-1">
+                    <div className="flex-1 min-h-0 overflow-y-auto">
                       <SyntaxHighlighter
                         language={EXT_LANG[selectedFile.split(".").pop()?.toLowerCase() ?? ""] ?? "plaintext"}
                         style={atomOneDark}
@@ -920,9 +919,9 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
                       >
                         {fileContent}
                       </SyntaxHighlighter>
-                    </ScrollArea>
+                    </div>
                   ) : (
-                    <ScrollArea className="flex-1">
+                    <div className="flex-1 min-h-0 overflow-y-auto">
                       {fileContent ? (
                         <pre className="p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap break-all text-muted-foreground">
                           {fileContent}
@@ -930,7 +929,7 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
                       ) : (
                         <div className="p-4 font-mono text-xs text-muted-foreground/30 italic">Empty file</div>
                       )}
-                    </ScrollArea>
+                    </div>
                   )}
                 </>
               )}
