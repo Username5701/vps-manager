@@ -132,7 +132,7 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
   const [, navigate] = useLocation();
   const searchParams = new URLSearchParams(searchString);
   const currentPath = searchParams.get("path") || "/";
-  const searchQuery = searchParams.get("q") || "";
+  const searchQuery = searchParams.get("search") || "";
 
   // Right panel: "file" | "terminal" | null
   const [rightPanel, setRightPanel] = useState<"file" | "terminal" | null>(initialPanel);
@@ -400,7 +400,7 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
           </span>
           <button
             className="ml-auto text-xs text-muted-foreground hover:text-foreground"
-            onClick={() => navigate(`/files?path=${encodeURIComponent(currentPath)}`)}
+            onClick={() => navigate(`/files?path=${encodeURIComponent(currentPath)}`) }
           >
             Clear
           </button>

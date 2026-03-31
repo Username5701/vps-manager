@@ -148,7 +148,7 @@ export default function HomePage() {
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/files?path=/&q=${encodeURIComponent(searchQuery.trim())}`);
+      navigate(`/files?path=/&search=${encodeURIComponent(searchQuery.trim())}`);
     }
   }
 

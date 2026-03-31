@@ -94,8 +94,9 @@ router.get("/system/info", async (_req, res) => {
       network: networkInterfaces,
       loggedUsers,
     });
-  } catch (err: any) {
-    res.status(500).json({ error: err?.message ?? "Failed to get system info" });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to get system info";
+    res.status(500).json({ error: message });
   }
 });
 

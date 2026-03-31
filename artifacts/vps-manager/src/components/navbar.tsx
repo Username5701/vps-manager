@@ -75,7 +75,7 @@ export function Navbar() {
         {/* Spacer for mobile */}
         <div className="flex-1 md:hidden" />
 
-        {/* Social + Logout */}
+        {/* Social + Avatar + Logout */}
         <div className="hidden md:flex items-center gap-1">
           {SOCIAL_LINKS.map(({ href, label, icon: Icon }) => (
             <a
@@ -90,6 +90,17 @@ export function Navbar() {
             </a>
           ))}
           <div className="w-px h-5 bg-border mx-1" />
+          {/* User avatar */}
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-black select-none mr-1"
+            style={{
+              background: "linear-gradient(135deg,#6e5cff,#0ff4c6)",
+              color: "#08090d",
+            }}
+            title="Authenticated"
+          >
+            X
+          </div>
           <Button
             variant="ghost"
             size="sm"
