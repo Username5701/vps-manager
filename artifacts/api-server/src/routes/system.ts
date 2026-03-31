@@ -277,6 +277,61 @@ router.get("/system/git", (_req, res) => {
   }
 });
 
+router.get("/system/sites", (_req, res) => {
+  const sitesDir = "/etc/nginx/sites-enabled";
+  if (!fs.existsSync(sitesDir)) return res.json({ sites: [] });
+
+  interface SiteEntry {
+    name: string;
+    domain: string;
+    root: string | null;
+    proxyPass: string | null;
+    ssl: boolean;
+    status: number | null;
+  }
+
+  const sites: SiteEntry[] = [];
+
+  try {
+    const files = fs.readdirSync(sitesDir).filter((f) => f !== "default");
+    for (const file of files) {
+      try {
+        const content = fs.readFileSync(path.join(sitesDir, file), "utf8");
+        const domainMatches = [...content.matchAll(/server_name\s+([^;]+);/g)]
+          .flatMap((m) => m[1].trim().split(/\s+/))
+          .filter((d) => d !== "_" && !d.startsWith("~") && d.includes("."));
+        const domain = domainMatches[0] ?? null;
+        if (!domain) continue;
+
+        const root = content.match(/root\s+([^;]+);/)?.[1]?.trim() ?? null;
+        const proxyPass = content.match(/proxy_pass\s+(https?:\/\/[^;]+);/)?.[1]?.trim() ?? null;
+        const ssl = content.includes("listen 443");
+        sites.push({ name: file, domain, root, proxyPass, ssl, status: null });
+      } catch { /* skip bad config */ }
+    }
+  } catch (e) {
+    return res.status(500).json({ error: "Cannot read nginx sites" });
+  }
+
+  const checks = sites.map(
+    (site) =>
+      new Promise<void>((resolve) => {
+        const scheme = site.ssl ? "https" : "http";
+        exec(
+          `curl -s -o /dev/null -w "%{http_code}" --connect-timeout 5 --max-time 8 -L "${scheme}://${site.domain}" 2>/dev/null`,
+          { timeout: 12000 },
+          (_, stdout) => {
+            const code = parseInt(stdout.trim(), 10);
+            site.status = isNaN(code) || code === 0 ? null : code;
+            resolve();
+          }
+        );
+      })
+  );
+
+  Promise.all(checks).then(() => res.json({ sites }));
+});
+
 router.get("/system/github-ssh", (_req, res) => {
   const sshDir = "/root/.ssh";
   const keyTypes = ["id_ed25519", "id_rsa", "id_ecdsa", "id_dsa"];

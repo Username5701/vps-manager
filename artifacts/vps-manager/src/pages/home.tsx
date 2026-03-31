@@ -9,7 +9,7 @@ import {
   Cpu, MemoryStick, HardDrive, Activity, Clock,
   Server, RefreshCw, FolderOpen, Search, Trash2,
   Network, Users, Terminal, Layers, CheckCircle2, XCircle, AlertCircle,
-  GitBranch, ExternalLink, ChevronRight,
+  GitBranch, ExternalLink, ChevronRight, Globe, ShieldCheck, ShieldX, KeyRound,
 } from "lucide-react";
 
 interface SystemInfo {
@@ -130,6 +130,10 @@ export default function HomePage() {
   const [pm2Loading, setPm2Loading] = useState(true);
   const [gitRepos, setGitRepos] = useState<{ path: string; branch: string; remote: string; lastCommit: string; dirty: boolean }[]>([]);
   const [gitLoading, setGitLoading] = useState(true);
+  const [sitesList, setSitesList] = useState<{ name: string; domain: string; root: string | null; proxyPass: string | null; ssl: boolean; status: number | null }[]>([]);
+  const [sitesLoading, setSitesLoading] = useState(true);
+  const [githubSsh, setGithubSsh] = useState<{ connected: boolean; authUser: string | null; keys: { type: string }[] } | null>(null);
+  const [githubSshLoading, setGithubSshLoading] = useState(true);
 
   const authHeaders = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
 
@@ -166,13 +170,37 @@ export default function HomePage() {
     setGitLoading(false);
   }, [apiKey]);
 
+  const fetchSites = useCallback(async () => {
+    try {
+      const res = await fetch("/api/system/sites", { headers: authHeaders });
+      if (res.ok) {
+        const data = await res.json() as { sites: { name: string; domain: string; root: string | null; proxyPass: string | null; ssl: boolean; status: number | null }[] };
+        setSitesList(data.sites ?? []);
+      }
+    } catch { /* ignore */ }
+    setSitesLoading(false);
+  }, [apiKey]);
+
+  const fetchGithubSsh = useCallback(async () => {
+    try {
+      const res = await fetch("/api/system/github-ssh", { headers: authHeaders });
+      if (res.ok) {
+        const data = await res.json() as { connected: boolean; authUser: string | null; keys: { type: string }[] };
+        setGithubSsh(data);
+      }
+    } catch { /* ignore */ }
+    setGithubSshLoading(false);
+  }, [apiKey]);
+
   useEffect(() => {
     fetchInfo(false);
     fetchPm2();
     fetchGit();
+    fetchSites();
+    fetchGithubSsh();
     const interval = setInterval(() => { fetchInfo(true); fetchPm2(); }, 15000);
     return () => clearInterval(interval);
-  }, [fetchInfo, fetchPm2, fetchGit]);
+  }, [fetchInfo, fetchPm2, fetchGit, fetchSites, fetchGithubSsh]);
 
   async function clearCache() {
     setClearing(true);
@@ -335,6 +363,38 @@ export default function HomePage() {
               sub={`Kernel ${info?.kernel ?? "—"}`}
               color="#0ff4c6"
             />
+          </div>
+        )}
+
+        {/* GitHub connection banner */}
+        {!githubSshLoading && githubSsh && (
+          <div
+            className="flex items-center gap-3 px-4 py-3 rounded-xl"
+            style={{
+              background: githubSsh.connected ? "rgba(15,244,198,.06)" : "rgba(255,107,107,.06)",
+              border: `1px solid ${githubSsh.connected ? "rgba(15,244,198,.2)" : "rgba(255,107,107,.2)"}`,
+            }}
+          >
+            {githubSsh.connected
+              ? <ShieldCheck className="w-4 h-4 flex-shrink-0" style={{ color: "#0ff4c6" }} />
+              : <ShieldX className="w-4 h-4 flex-shrink-0" style={{ color: "#ff6b6b" }} />
+            }
+            <div className="flex items-center gap-2 flex-1 min-w-0 flex-wrap">
+              <span className="text-sm font-semibold" style={{ color: githubSsh.connected ? "#0ff4c6" : "#ff6b6b" }}>
+                {githubSsh.connected ? "GitHub SSH: Connected" : "GitHub SSH: Not connected"}
+              </span>
+              {githubSsh.connected && githubSsh.authUser && (
+                <span className="text-xs text-muted-foreground">
+                  as <span className="font-mono text-foreground/70">@{githubSsh.authUser}</span>
+                </span>
+              )}
+              {githubSsh.keys.length > 0 && (
+                <span className="text-xs text-muted-foreground/50 font-mono">
+                  · {githubSsh.keys.map((k) => k.type).join(", ")}
+                </span>
+              )}
+            </div>
+            <KeyRound className="w-3.5 h-3.5 flex-shrink-0 text-muted-foreground/30" />
           </div>
         )}
 
@@ -546,6 +606,91 @@ export default function HomePage() {
                       )}
                       <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 group-hover:text-[#6e5cff] transition-colors" />
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Deployed Sites */}
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <Globe className="w-4 h-4" style={{ color: "#0ff4c6" }} />
+            <h2 className="text-sm font-bold text-foreground">Deployed Sites</h2>
+            {!sitesLoading && sitesList.length > 0 && (
+              <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
+                style={{ background: "rgba(15,244,198,.1)", color: "#0ff4c6", border: "1px solid rgba(15,244,198,.2)" }}>
+                {sitesList.length} sites
+              </span>
+            )}
+          </div>
+
+          {sitesLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+            </div>
+          ) : sitesList.length === 0 ? (
+            <div className="rounded-xl p-5 flex items-center gap-3"
+              style={{ background: "#0f1117", border: "1px solid rgba(110,92,255,.15)" }}>
+              <Globe className="w-5 h-5 flex-shrink-0 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">No nginx sites found in <code className="font-mono text-xs">/etc/nginx/sites-enabled/</code></p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {sitesList.map((site) => {
+                const isUp = site.status !== null && site.status >= 200 && site.status < 400;
+                const isDown = site.status === null || site.status >= 500;
+                const statusColor = isUp ? "#0ff4c6" : isDown ? "#ff6b6b" : "#f59e0b";
+                const statusLabel = site.status === null ? "Timeout" : String(site.status);
+                const StatusIcon = isUp ? CheckCircle2 : isDown ? XCircle : AlertCircle;
+                const scheme = site.ssl ? "https" : "http";
+                const url = `${scheme}://${site.domain}`;
+                const type = site.proxyPass ? "Proxy" : "Static";
+
+                return (
+                  <div key={site.domain} className="rounded-xl p-4 flex flex-col gap-3"
+                    style={{ background: "#0f1117", border: "1px solid rgba(110,92,255,.15)" }}>
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 font-bold text-sm text-foreground hover:text-[#a8a0ff] transition-colors truncate"
+                        >
+                          {site.domain}
+                          <ExternalLink className="w-3 h-3 flex-shrink-0 opacity-50" />
+                        </a>
+                        <span className="text-xs text-muted-foreground/50 mt-0.5">
+                          {type}{site.ssl ? " · SSL" : ""}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <StatusIcon className="w-3.5 h-3.5" style={{ color: statusColor }} />
+                        <span className="text-xs font-mono font-bold" style={{ color: statusColor }}>
+                          {statusLabel}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Path / proxy info */}
+                    {site.root && (
+                      <button
+                        onClick={() => navigate(`/files?path=${encodeURIComponent(site.root!)}`)}
+                        className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground/50 hover:text-[#6e5cff] transition-colors text-left truncate w-full"
+                      >
+                        <FolderOpen className="w-3 h-3 flex-shrink-0" />
+                        <span className="truncate">{site.root}</span>
+                      </button>
+                    )}
+                    {site.proxyPass && (
+                      <span className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground/50 truncate">
+                        <ChevronRight className="w-3 h-3 flex-shrink-0" />
+                        {site.proxyPass}
+                      </span>
+                    )}
                   </div>
                 );
               })}
