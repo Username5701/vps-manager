@@ -7,6 +7,10 @@ import { botGuard, honeypotTrap } from "./middleware/guard";
 
 const app: Express = express();
 
+// Trust the Nginx reverse-proxy so req.ip resolves to the real client IP
+// (read from X-Forwarded-For) instead of 127.0.0.1.
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,

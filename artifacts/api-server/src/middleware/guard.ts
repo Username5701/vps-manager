@@ -28,12 +28,20 @@ const BAN_STRIKES = 10;           // ban after this many refused requests
 // Per-IP refusal counter (auto-bans persistent hammering)
 const strikeMap = new Map<string, number>();
 
+// Private / loopback ranges that must never be banned.
+// These come from the Nginx reverse-proxy running on the same host.
+const TRUSTED_PREFIXES = ["127.", "::1", "10.", "172.16.", "172.17.", "172.18.",
+  "172.19.", "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.",
+  "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.", "192.168."];
+
 function getIp(req: Request): string {
-  return (
-    (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim() ||
-    req.socket.remoteAddress ||
-    "0.0.0.0"
-  );
+  // With `app.set("trust proxy", 1)`, Express sets req.ip to the real
+  // client IP taken from X-Forwarded-For — NOT the Nginx socket address.
+  return req.ip ?? req.socket.remoteAddress ?? "0.0.0.0";
+}
+
+function isTrustedIp(ip: string): boolean {
+  return TRUSTED_PREFIXES.some((prefix) => ip.startsWith(prefix));
 }
 
 function addStrike(ip: string): void {
@@ -62,16 +70,25 @@ setInterval(() => {
 }, 600_000);
 
 // ── Honeypot trap ──────────────────────────────────────────────────────────
-export function honeypotTrap(_req: Request, res: Response): void {
-  const ip = getIp(_req);
-  bannedIps.add(ip);          // permanently ban whoever probes these routes
-  strikeMap.set(ip, BAN_STRIKES);
+export function honeypotTrap(req: Request, res: Response): void {
+  const ip = getIp(req);
+  if (!isTrustedIp(ip)) {
+    bannedIps.add(ip);
+    strikeMap.set(ip, BAN_STRIKES);
+  }
   res.status(404).end();
 }
 
 // ── Main guard middleware ──────────────────────────────────────────────────
 export function botGuard(req: Request, res: Response, next: NextFunction): void {
   const ip = getIp(req);
+
+  // Loopback / private IPs (Nginx proxy, health-checkers on the same host)
+  // are never rate-limited or banned.
+  if (isTrustedIp(ip)) {
+    next();
+    return;
+  }
 
   // 1. Permanently banned IP
   if (bannedIps.has(ip)) {
