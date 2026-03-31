@@ -750,11 +750,11 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
       </header>
 
       {/* ── Main ── */}
-      <div className="flex flex-1 min-h-0">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
 
         {/* File list — full width when no panel; sidebar when terminal/logs open */}
         {(rightPanel === null || rightPanel === "terminal" || rightPanel === "logs") && (
-          <div className={`flex flex-col min-h-0 border-r border-border ${
+          <div className={`flex flex-col min-h-0 overflow-hidden border-r border-border ${
             rightPanelOpen ? "w-64 flex-shrink-0" : "flex-1"
           }`}>
             {/* Column headers — only when full width */}
@@ -935,7 +935,7 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
 
         {/* ── Terminal (inline panel) ── */}
         {rightPanel === "terminal" && (
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* Terminal header */}
             <div className="h-12 border-b border-border bg-card/40 flex items-center justify-between px-4 flex-shrink-0 gap-3">
               <div className="flex items-center gap-2 min-w-0">
@@ -972,7 +972,7 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
             </div>
 
             {/* Output */}
-            <div ref={termRef} className="flex-1 overflow-y-auto bg-black p-4 font-mono text-xs leading-relaxed">
+            <div ref={termRef} className="flex-1 min-h-0 overflow-y-auto bg-black p-4 font-mono text-xs leading-relaxed">
               {termHistory.length === 0 && (
                 <div className="text-muted-foreground/30 italic">Type a command below…</div>
               )}
@@ -1022,7 +1022,7 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
 
         {/* ── Logs panel ── */}
         {rightPanel === "logs" && (
-          <div className="flex-1 flex flex-col min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* Header */}
             <div className="h-12 border-b border-border bg-card/40 flex items-center justify-between px-4 flex-shrink-0 gap-3">
               <div className="flex items-center gap-2 min-w-0">
@@ -1070,7 +1070,7 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
               </div>
             </div>
 
-            <div className="flex flex-1 min-h-0">
+            <div className="flex flex-1 min-h-0 overflow-hidden">
               {/* File picker sidebar */}
               {logSubFiles.length > 1 && (
                 <div className="w-48 flex-shrink-0 border-r border-border bg-card/20 overflow-y-auto">
@@ -1103,7 +1103,7 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
               {/* Log output */}
               <div
                 ref={logRef}
-                className="flex-1 overflow-y-auto bg-black font-mono text-xs leading-relaxed p-4"
+                className="flex-1 min-h-0 overflow-y-auto bg-black font-mono text-xs leading-relaxed p-4"
               >
                 {logLoading && logLines.length === 0 ? (
                   <div className="flex items-center gap-3 text-muted-foreground">
