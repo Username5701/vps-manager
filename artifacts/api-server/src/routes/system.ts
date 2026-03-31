@@ -281,6 +281,13 @@ router.get("/system/sites", (_req, res) => {
   const sitesDir = "/etc/nginx/sites-enabled";
   if (!fs.existsSync(sitesDir)) return res.json({ sites: [] });
 
+  interface GitInfo {
+    branch: string;
+    remote: string;
+    lastCommit: string;
+    dirty: boolean;
+  }
+
   interface SiteEntry {
     name: string;
     domain: string;
@@ -288,7 +295,37 @@ router.get("/system/sites", (_req, res) => {
     proxyPass: string | null;
     ssl: boolean;
     status: number | null;
+    git: GitInfo | null;
   }
+
+  const getGitInfo = (dir: string): GitInfo | null => {
+    if (!dir || !fs.existsSync(path.join(dir, ".git"))) return null;
+    try {
+      const rawRemote = run(`git -C "${dir}" remote get-url origin 2>/dev/null`);
+      if (!rawRemote) return null;
+      // Strip embedded tokens from HTTPS URLs
+      const remote = rawRemote.replace(/https?:\/\/[^@]+@/, "https://");
+      // Branch — use remote default branch if local HEAD has no commits yet
+      let branch = run(`git -C "${dir}" rev-parse --abbrev-ref HEAD 2>/dev/null`);
+      if (!branch || branch === "HEAD") {
+        // Uninitialised checkout: read remote default branch from FETCH_HEAD file
+        const fetchHeadFile = path.join(dir, ".git", "FETCH_HEAD");
+        if (fs.existsSync(fetchHeadFile)) {
+          const fh = fs.readFileSync(fetchHeadFile, "utf8").split("\n")[0];
+          branch = fh.match(/branch '([^']+)'/)?.[1] ?? "main";
+        } else {
+          branch = "main";
+        }
+      }
+      // Last commit — try local HEAD first, then FETCH_HEAD
+      let lastCommit = run(`git -C "${dir}" log -1 --format="%h %s" 2>/dev/null`);
+      if (!lastCommit) {
+        lastCommit = run(`git -C "${dir}" log -1 --format="%h %s" FETCH_HEAD 2>/dev/null`);
+      }
+      const dirty = run(`git -C "${dir}" status --porcelain 2>/dev/null`).length > 0;
+      return { branch, remote, lastCommit, dirty };
+    } catch { return null; }
+  };
 
   const sites: SiteEntry[] = [];
 
@@ -304,12 +341,32 @@ router.get("/system/sites", (_req, res) => {
         if (!domain) continue;
 
         const root = content.match(/root\s+([^;]+);/)?.[1]?.trim() ?? null;
-        const proxyPass = content.match(/proxy_pass\s+(https?:\/\/[^;]+);/)?.[1]?.trim() ?? null;
+        const proxyPassMatch = content.match(/proxy_pass\s+(https?:\/\/[^;]+);/)?.[1]?.trim() ?? null;
         const ssl = content.includes("listen 443");
-        sites.push({ name: file, domain, root, proxyPass, ssl, status: null });
+
+        // Find git: check root dir first; for proxy-only sites resolve port → CWD via /proc
+        let gitDir: string | null = root;
+        // Only look up proc CWD when there's no static root (pure proxy site)
+        if (!gitDir && proxyPassMatch) {
+          const portMatch = proxyPassMatch.match(/:(\d+)/);
+          if (portMatch) {
+            const port = portMatch[1];
+            try {
+              const ssOut = run(`ss -tlnp 2>/dev/null | grep ':${port} '`);
+              const pidMatch = ssOut.match(/pid=(\d+)/);
+              if (pidMatch) {
+                const procCwd = run(`readlink /proc/${pidMatch[1]}/cwd 2>/dev/null`);
+                if (procCwd && fs.existsSync(procCwd)) gitDir = procCwd;
+              }
+            } catch { /* ignore */ }
+          }
+        }
+
+        const git = gitDir ? getGitInfo(gitDir) : null;
+        sites.push({ name: file, domain, root, proxyPass: proxyPassMatch, ssl, status: null, git });
       } catch { /* skip bad config */ }
     }
-  } catch (e) {
+  } catch {
     return res.status(500).json({ error: "Cannot read nginx sites" });
   }
 
