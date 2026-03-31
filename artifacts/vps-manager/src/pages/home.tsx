@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Cpu, MemoryStick, HardDrive, Activity,
+  Cpu, MemoryStick, HardDrive, Activity, Clock,
   Server, RefreshCw, FolderOpen, Search, Trash2,
   Network, Users, Terminal,
 } from "lucide-react";

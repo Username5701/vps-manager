@@ -21,7 +21,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 artifacts-monorepo/
 ├── artifacts/              # Deployable applications
 │   ├── api-server/         # Express API server
-│   └── vps-manager/        # React + Vite file manager frontend (at /)
+│   └── vps-manager/        # React + Vite frontend (XCASPER MANAGER UI)
 ├── lib/                    # Shared libraries
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
@@ -33,10 +33,46 @@ artifacts-monorepo/
 └── package.json            # Root package with hoisted devDeps
 ```
 
-## File Manager App
+## XCASPER MANAGER App
 
-A **local file manager** — a browser-based UI to manage files on the server it's deployed on.
-No SSH, no remote connections. Reads/writes the local filesystem via Node.js `fs`.
+A **branded local VPS file manager** for the xcasper.space brand family. Browser-based UI to manage files on the server it's deployed on. Secured by API key authentication.
+
+### Brand / Theme
+- **App name**: XCASPER MANAGER
+- **Brand**: xcasper.space by TRABY CASPER
+- **Colors**: bg `#08090d`, purple `#6e5cff`, cyan `#0ff4c6`, surface `#0f1117`
+- **Gradient**: `linear-gradient(135deg, #6e5cff, #0ff4c6)`
+- **Fonts**: Inter (UI), Fira Code (mono)
+
+### Authentication
+- `API_KEY` environment secret — set via Replit Secrets
+- Login page at `/login` — API key stored in `sessionStorage` as `xcm_api_key`
+- Auth context at `src/contexts/auth-context.tsx`
+- Backend: `GET /api/auth/verify` (Bearer token), `POST /api/auth/logout`
+
+### Frontend Structure
+```text
+src/
+├── App.tsx                   # Router + AuthProvider + layout
+├── contexts/
+│   └── auth-context.tsx      # Auth state, login/logout, welcomeShown
+├── pages/
+│   ├── login.tsx             # Login screen (unauthenticated entry point)
+│   ├── home.tsx              # System dashboard (default protected page)
+│   ├── file-manager.tsx      # File manager + terminal (accepts initialPanel prop)
+│   └── not-found.tsx         # 404 page
+└── components/
+    ├── navbar.tsx             # Fixed top navbar with nav links + social links + logout
+    ├── footer.tsx             # Bottom footer with links
+    └── welcome-modal.tsx      # First-login T&C modal (dismissed once per session)
+```
+
+### Routes
+- `/login` — Login page (redirects to `/` if already authenticated)
+- `/` — Home: System dashboard with CPU/memory/disk stats
+- `/files` — File manager
+- `/terminal` — File manager with terminal panel open
+- `/dev` — Dev page (placeholder, Task #3)
 
 ### Features
 - **Browse**: Navigate the full filesystem including root (`/`)
@@ -48,14 +84,21 @@ No SSH, no remote connections. Reads/writes the local filesystem via Node.js `fs
   - **Text/logs**: plain preformatted view
   - **Binary**: "cannot display" notice
 - **Edit**: In-browser text editor with save (text/code files only)
-- **Create**: New files (created empty, then opened for editing) and new directories
+- **Create**: New files and new directories
 - **Delete**: With confirmation dialog; recursive delete for directories
 - **Rename**: Rename a file/folder within its parent directory
 - **Move**: Move a file or folder to any absolute destination path
 - **Terminal**: Run shell commands on the server; `cd` persists working directory
+- **System Info**: Real-time CPU, memory, disk, network, uptime on home page
+- **Search**: Search bar on home page that navigates to `/files?q=...`
+- **Clear Cache**: `POST /api/system/clear-cache` — runs `sync` + drops page cache
 
 ### API Endpoints
 All endpoints are under `/api`:
+- `GET /auth/verify` — validate API key (Bearer token)
+- `POST /auth/logout` — stub logout
+- `GET /system/info` — system info (hostname, OS, CPU, memory, disk, network, uptime)
+- `POST /system/clear-cache` — sync + drop_caches
 - `GET /files/list?path=` — list directory contents (sorted dirs-first)
 - `GET /files/read?path=` — read file content as JSON (detects binary; max 5MB text)
 - `GET /files/raw?path=` — stream raw file bytes with correct Content-Type (for media)
@@ -64,9 +107,6 @@ All endpoints are under `/api`:
 - `POST /files/mkdir` — create directory (recursive) `{ path }`
 - `POST /files/rename` — rename or move `{ oldPath, newPath }`
 - `POST /terminal/exec` — execute a shell command `{ command, cwd? }`
-
-### Frontend
-Single page React app (`src/pages/file-manager.tsx`). No sidebar or routing beyond `/?path=…`.
 
 ## TypeScript & Composite Projects
 
@@ -85,12 +125,12 @@ Every package extends `tsconfig.base.json` which sets `composite: true`. The roo
 
 ### `artifacts/api-server` (`@workspace/api-server`)
 
-Express 5 API server. Routes: `files.ts`, `terminal.ts`, `health.ts`.
+Express 5 API server. Routes: `files.ts`, `terminal.ts`, `health.ts`, `auth.ts`, `system.ts`.
 Uses `@workspace/api-zod` for validation, Node.js `fs` for filesystem ops.
 
 ### `artifacts/vps-manager` (`@workspace/vps-manager`)
 
-React + Vite frontend. Single page file manager with dark theme.
+React + Vite frontend. XCASPER MANAGER brand. Auth-protected routing with navbar/footer/welcome modal.
 Uses `@workspace/api-client-react` for React Query hooks.
 
 ### `lib/api-spec` (`@workspace/api-spec`)
@@ -105,3 +145,9 @@ Generated Zod schemas from the OpenAPI spec. Used by `api-server` for validation
 ### `lib/api-client-react` (`@workspace/api-client-react`)
 
 Generated React Query hooks and fetch client from the OpenAPI spec.
+
+## Environment Variables / Secrets
+
+- `API_KEY` — (Replit Secret) The API key required to log in to XCASPER MANAGER
+- `SESSION_SECRET` — (Replit Secret) Session secret (available but not currently used for session middleware)
+- `DATABASE_URL` — PostgreSQL connection string (managed by Replit)
