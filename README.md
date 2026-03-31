@@ -21,7 +21,7 @@ No SaaS. No subscriptions. No telemetry. Deploy it on your own server, secure it
 
 ## Screenshot
 
-![XCASPER MANAGER — Login](docs/screenshot-dashboard.jpg)
+![XCASPER MANAGER — System Dashboard](docs/screenshot-dashboard.jpg)
 
 ---
 
