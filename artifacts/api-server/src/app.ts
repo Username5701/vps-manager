@@ -3,6 +3,7 @@ import cors from "cors";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { botGuard, honeypotTrap } from "./middleware/guard";
 
 const app: Express = express();
 
@@ -28,6 +29,21 @@ app.use(
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ── Global bot / curl guard ────────────────────────────────────────────────
+app.use(botGuard);
+
+// ── Honeypot routes — bans any IP that probes these paths ─────────────────
+const HONEYPOT_PATHS = [
+  "/api/env", "/api/config", "/api/admin", "/api/debug",
+  "/api/setup", "/api/secret", "/api/keys", "/api/credentials",
+  "/.env", "/config.json", "/api/v1", "/api/v2",
+  "/wp-admin", "/wp-login.php", "/phpmyadmin", "/admin",
+  "/.git/config", "/server-status", "/actuator", "/actuator/env",
+];
+for (const path of HONEYPOT_PATHS) {
+  app.all(path, honeypotTrap);
+}
 
 app.use("/api", router);
 

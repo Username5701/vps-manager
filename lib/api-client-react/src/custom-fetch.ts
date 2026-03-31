@@ -355,6 +355,12 @@ export async function customFetch<T = unknown>(
     }
   }
 
+  // Client identity header — proves this is a real browser session.
+  // The server rejects requests that omit or forge this header.
+  if (!headers.has("x-xcm-client")) {
+    headers.set("x-xcm-client", "xcm-browser-v1");
+  }
+
   const requestInfo = { method, url: resolveUrl(input) };
 
   const response = await fetch(input, { ...init, method, headers });
