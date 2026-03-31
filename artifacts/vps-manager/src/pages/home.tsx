@@ -9,6 +9,7 @@ import {
   Cpu, MemoryStick, HardDrive, Activity, Clock,
   Server, RefreshCw, FolderOpen, Search, Trash2,
   Network, Users, Terminal, Layers, CheckCircle2, XCircle, AlertCircle,
+  GitBranch, ExternalLink, ChevronRight,
 } from "lucide-react";
 
 interface SystemInfo {
@@ -127,6 +128,8 @@ export default function HomePage() {
   const [pm2Processes, setPm2Processes] = useState<Pm2Process[]>([]);
   const [pm2Available, setPm2Available] = useState(false);
   const [pm2Loading, setPm2Loading] = useState(true);
+  const [gitRepos, setGitRepos] = useState<{ path: string; branch: string; remote: string; lastCommit: string; dirty: boolean }[]>([]);
+  const [gitLoading, setGitLoading] = useState(true);
 
   const authHeaders = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
 
@@ -152,12 +155,24 @@ export default function HomePage() {
     setPm2Loading(false);
   }, [apiKey]);
 
+  const fetchGit = useCallback(async () => {
+    try {
+      const res = await fetch("/api/system/git", { headers: authHeaders });
+      if (res.ok) {
+        const data = await res.json() as { repos: { path: string; branch: string; remote: string; lastCommit: string; dirty: boolean }[] };
+        setGitRepos(data.repos ?? []);
+      }
+    } catch { /* ignore */ }
+    setGitLoading(false);
+  }, [apiKey]);
+
   useEffect(() => {
     fetchInfo(false);
     fetchPm2();
+    fetchGit();
     const interval = setInterval(() => { fetchInfo(true); fetchPm2(); }, 15000);
     return () => clearInterval(interval);
-  }, [fetchInfo, fetchPm2]);
+  }, [fetchInfo, fetchPm2, fetchGit]);
 
   async function clearCache() {
     setClearing(true);
@@ -499,12 +514,13 @@ export default function HomePage() {
                 return (
                   <div
                     key={proc.id}
-                    className="grid grid-cols-12 gap-2 px-4 py-3 text-xs items-center transition-colors hover:bg-white/[0.02]"
+                    className="grid grid-cols-12 gap-2 px-4 py-3 text-xs items-center transition-colors hover:bg-white/[0.04] cursor-pointer group"
                     style={{ borderBottom: idx < pm2Processes.length - 1 ? "1px solid rgba(110,92,255,.08)" : "none" }}
+                    onClick={() => navigate(`/pm2/${encodeURIComponent(proc.name)}`)}
                   >
                     <div className="col-span-1 text-muted-foreground font-mono">{proc.id}</div>
                     <div className="col-span-3">
-                      <p className="font-semibold text-foreground truncate">{proc.name}</p>
+                      <p className="font-semibold text-foreground truncate group-hover:text-[#a8a0ff] transition-colors">{proc.name}</p>
                       <p className="text-muted-foreground/60 font-mono truncate mt-0.5">
                         {proc.script ? proc.script.split("/").pop() : proc.interpreter}
                       </p>
@@ -521,14 +537,119 @@ export default function HomePage() {
                         <span className="text-muted-foreground/50 ml-1">· pid {proc.pid}</span>
                       )}
                     </div>
-                    <div className="col-span-1">
+                    <div className="col-span-1 flex items-center justify-between">
                       {proc.watch ? (
                         <span className="text-xs px-1.5 py-0.5 rounded font-medium"
                           style={{ background: "rgba(110,92,255,.15)", color: "#a8a0ff" }}>on</span>
                       ) : (
                         <span className="text-muted-foreground/40">—</span>
                       )}
+                      <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/20 group-hover:text-[#6e5cff] transition-colors" />
                     </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Git Repositories */}
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <GitBranch className="w-4 h-4" style={{ color: "#6e5cff" }} />
+            <h2 className="text-sm font-bold text-foreground">Git Repositories</h2>
+            {!gitLoading && gitRepos.length > 0 && (
+              <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
+                style={{ background: "rgba(110,92,255,.12)", color: "#a8a0ff", border: "1px solid rgba(110,92,255,.2)" }}>
+                {gitRepos.length} repo{gitRepos.length !== 1 ? "s" : ""}
+              </span>
+            )}
+          </div>
+
+          {gitLoading ? (
+            <div className="space-y-2">
+              {[...Array(2)].map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />)}
+            </div>
+          ) : gitRepos.length === 0 ? (
+            <div className="rounded-xl p-5 flex items-center gap-3"
+              style={{ background: "#0f1117", border: "1px solid rgba(110,92,255,.15)" }}>
+              <GitBranch className="w-5 h-5 flex-shrink-0 text-muted-foreground/30" />
+              <div>
+                <p className="text-sm text-muted-foreground">No git repositories found on this server.</p>
+                <p className="text-xs text-muted-foreground/50 mt-0.5">
+                  Scanned <code className="font-mono text-xs">/root</code>, <code className="font-mono text-xs">/home</code>, <code className="font-mono text-xs">/var/www</code>, and PM2 working directories.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {gitRepos.map((repo) => {
+                const repoName = repo.path.split("/").pop() ?? repo.path;
+                const isGithub = repo.remote.includes("github.com");
+                const remoteDisplay = repo.remote
+                  .replace(/^https?:\/\//, "")
+                  .replace(/^git@/, "")
+                  .replace("github.com:", "github.com/")
+                  .replace(/\.git$/, "");
+                return (
+                  <div
+                    key={repo.path}
+                    className="rounded-xl p-4 flex flex-col gap-3"
+                    style={{ background: "#0f1117", border: "1px solid rgba(110,92,255,.15)" }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                          style={{ background: "rgba(110,92,255,.12)" }}>
+                          <GitBranch className="w-4 h-4" style={{ color: "#6e5cff" }} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-foreground truncate">{repoName}</p>
+                          <p className="text-xs font-mono text-muted-foreground/60 truncate">{repo.path}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {repo.dirty && (
+                          <span className="text-xs px-1.5 py-0.5 rounded font-medium"
+                            style={{ background: "rgba(245,158,11,.12)", color: "#f59e0b", border: "1px solid rgba(245,158,11,.2)" }}>
+                            dirty
+                          </span>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 gap-1 text-xs border-border/50"
+                          onClick={() => navigate(`/files?path=${encodeURIComponent(repo.path)}`)}
+                        >
+                          <FolderOpen className="w-3 h-3" />
+                          Browse
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      {repo.branch && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded font-mono"
+                          style={{ background: "rgba(15,244,198,.08)", color: "#0ff4c6" }}>
+                          <GitBranch className="w-3 h-3" />
+                          {repo.branch}
+                        </span>
+                      )}
+                      {remoteDisplay && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded font-mono text-muted-foreground/70"
+                          style={{ background: "rgba(255,255,255,.04)" }}>
+                          {isGithub && <ExternalLink className="w-3 h-3" />}
+                          <span className="truncate max-w-[200px]">{remoteDisplay}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {repo.lastCommit && (
+                      <p className="text-xs font-mono text-muted-foreground/50 truncate">
+                        <span className="text-muted-foreground/30">last: </span>
+                        {repo.lastCommit}
+                      </p>
+                    )}
                   </div>
                 );
               })}

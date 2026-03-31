@@ -2,6 +2,7 @@ import { Router } from "express";
 import { execSync, exec } from "child_process";
 import os from "os";
 import fs from "fs";
+import path from "path";
 
 const router = Router();
 
@@ -144,6 +145,136 @@ router.get("/system/pm2", (_req, res) => {
       res.json({ available: false, processes: [] });
     }
   });
+});
+
+router.get("/system/pm2/:name", (req, res) => {
+  exec("pm2 jlist 2>/dev/null", (err, stdout) => {
+    if (err || !stdout.trim()) return res.status(503).json({ error: "PM2 not available" });
+    try {
+      const raw = JSON.parse(stdout) as { name: string; pm_id: number; pid: number; pm2_env?: Record<string, unknown>; monit?: { memory?: number; cpu?: number } }[];
+      const proc = raw.find((p) => p.name === req.params.name || String(p.pm_id) === req.params.name);
+      if (!proc) return res.status(404).json({ error: "Process not found" });
+      const env = (proc.pm2_env ?? {}) as Record<string, unknown>;
+      res.json({
+        id: proc.pm_id,
+        name: proc.name,
+        pid: proc.pid,
+        status: (env.status as string) ?? "unknown",
+        cpu: proc.monit?.cpu ?? 0,
+        memory: proc.monit?.memory ?? 0,
+        uptime: (env.pm_uptime as number) ?? 0,
+        restarts: (env.restart_time as number) ?? 0,
+        interpreter: (env.exec_interpreter as string) ?? "node",
+        script: (env.pm_exec_path as string) ?? "",
+        cwd: (env.cwd as string) ?? "",
+        watch: (env.watch as boolean) ?? false,
+        nodeVersion: (env.node_version as string) ?? "",
+        logFile: (env.pm_out_log_path as string) ?? "",
+        errorFile: (env.pm_err_log_path as string) ?? "",
+        execMode: (env.exec_mode as string) ?? "fork",
+        createdAt: (env.created_at as number) ?? 0,
+      });
+    } catch {
+      res.status(500).json({ error: "Failed to parse PM2 data" });
+    }
+  });
+});
+
+router.get("/system/pm2/:name/logs", (req, res) => {
+  exec("pm2 jlist 2>/dev/null", (err, stdout) => {
+    if (err || !stdout.trim()) return res.status(503).json({ error: "PM2 not available" });
+    try {
+      const raw = JSON.parse(stdout) as { name: string; pm_id: number; pm2_env?: Record<string, unknown> }[];
+      const proc = raw.find((p) => p.name === req.params.name || String(p.pm_id) === req.params.name);
+      if (!proc) return res.status(404).json({ error: "Process not found" });
+      const env = (proc.pm2_env ?? {}) as Record<string, unknown>;
+      const outLog = (env.pm_out_log_path as string) ?? "";
+      const errLog = (env.pm_err_log_path as string) ?? "";
+      const lines = parseInt(req.query.lines as string) || 80;
+      const readLog = (file: string): string[] => {
+        if (!file || !fs.existsSync(file)) return [];
+        try {
+          return execSync(`tail -n ${lines} "${file}" 2>/dev/null`, { timeout: 3000, encoding: "utf8" })
+            .split("\n").filter(Boolean);
+        } catch { return []; }
+      };
+      res.json({ stdout: readLog(outLog), stderr: readLog(errLog), outFile: outLog, errFile: errLog });
+    } catch {
+      res.status(500).json({ error: "Failed to read logs" });
+    }
+  });
+});
+
+router.post("/system/pm2/:name/restart", (req, res) => {
+  exec(`pm2 restart "${req.params.name}" 2>&1`, { timeout: 15000 }, (err, stdout) => {
+    if (err) return res.status(500).json({ error: err.message, output: stdout });
+    res.json({ ok: true, output: stdout.trim() });
+  });
+});
+
+router.post("/system/pm2/:name/stop", (req, res) => {
+  exec(`pm2 stop "${req.params.name}" 2>&1`, { timeout: 10000 }, (err, stdout) => {
+    if (err) return res.status(500).json({ error: err.message, output: stdout });
+    res.json({ ok: true, output: stdout.trim() });
+  });
+});
+
+router.post("/system/pm2/:name/start", (req, res) => {
+  exec(`pm2 start "${req.params.name}" 2>&1`, { timeout: 10000 }, (err, stdout) => {
+    if (err) return res.status(500).json({ error: err.message, output: stdout });
+    res.json({ ok: true, output: stdout.trim() });
+  });
+});
+
+router.post("/system/pm2/:name/flush", (req, res) => {
+  exec(`pm2 flush "${req.params.name}" 2>&1`, { timeout: 10000 }, (err, stdout) => {
+    if (err) return res.status(500).json({ error: err.message, output: stdout });
+    res.json({ ok: true, output: stdout.trim() });
+  });
+});
+
+router.get("/system/git", (_req, res) => {
+  try {
+    const searchRoots = ["/root", "/home", "/var/www", "/opt"];
+    const repos: { path: string; branch: string; remote: string; lastCommit: string; dirty: boolean }[] = [];
+    const checked = new Set<string>();
+
+    const tryAddRepo = (dir: string) => {
+      if (checked.has(dir) || !fs.existsSync(path.join(dir, ".git"))) return;
+      checked.add(dir);
+      repos.push({
+        path: dir,
+        branch: run(`git -C "${dir}" rev-parse --abbrev-ref HEAD 2>/dev/null`),
+        remote: run(`git -C "${dir}" remote get-url origin 2>/dev/null`),
+        lastCommit: run(`git -C "${dir}" log -1 --format="%h %s" 2>/dev/null`),
+        dirty: run(`git -C "${dir}" status --porcelain 2>/dev/null`).length > 0,
+      });
+    };
+
+    const pm2CWDs: string[] = [];
+    try {
+      const pm2Out = execSync("pm2 jlist 2>/dev/null", { timeout: 5000, encoding: "utf8" });
+      if (pm2Out.trim()) {
+        (JSON.parse(pm2Out) as { pm2_env?: { cwd?: string } }[])
+          .forEach((p) => { if (p.pm2_env?.cwd) pm2CWDs.push(p.pm2_env.cwd); });
+      }
+    } catch { /* pm2 not available */ }
+
+    [...searchRoots, ...pm2CWDs].forEach((base) => {
+      if (!fs.existsSync(base)) return;
+      tryAddRepo(base);
+      try {
+        fs.readdirSync(base, { withFileTypes: true })
+          .filter((d) => d.isDirectory() && !d.name.startsWith("."))
+          .forEach((d) => tryAddRepo(path.join(base, d.name)));
+      } catch { /* permission denied */ }
+    });
+
+    res.json({ repos });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to scan git repos";
+    res.status(500).json({ error: message });
+  }
 });
 
 router.post("/system/clear-cache", (_req, res) => {
