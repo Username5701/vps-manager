@@ -6,7 +6,6 @@ import { useEffect } from "react";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { WelcomeModal } from "@/components/welcome-modal";
 import { Navbar } from "@/components/navbar";
-import { Footer } from "@/components/footer";
 import LoginPage from "@/pages/login";
 import HomePage from "@/pages/home";
 import FileManager from "@/pages/file-manager";
@@ -42,7 +41,6 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {children}
       </main>
-      <Footer />
       <WelcomeModal />
     </div>
   );

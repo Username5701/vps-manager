@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useLocation, useParams } from "wouter";
+import { Footer } from "@/components/footer";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -530,6 +531,7 @@ export default function Pm2DetailPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

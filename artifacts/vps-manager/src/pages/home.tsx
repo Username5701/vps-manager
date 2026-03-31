@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useLocation } from "wouter";
+import { Footer } from "@/components/footer";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -902,7 +903,7 @@ export default function HomePage() {
           )}
         </section>
 
-      </div>
+      <Footer />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { Footer } from "@/components/footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -995,7 +996,7 @@ export default function DevPage() {
           </div>
         </section>
 
-      </div>
+      <Footer />
     </div>
   );
 }
