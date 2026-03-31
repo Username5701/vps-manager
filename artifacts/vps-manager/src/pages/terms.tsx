@@ -3,7 +3,7 @@ import { ArrowLeft, Shield, Eye, AlertTriangle, Scale } from "lucide-react";
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: "#08090d" }}>
+    <div className="h-full overflow-y-auto flex flex-col" style={{ background: "#08090d" }}>
       {/* Minimal header */}
       <div className="sticky top-0 z-10 px-6 py-3 flex items-center gap-3"
         style={{ background: "rgba(8,9,13,.9)", borderBottom: "1px solid rgba(110,92,255,.15)", backdropFilter: "blur(12px)" }}>

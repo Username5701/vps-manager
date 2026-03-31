@@ -23,7 +23,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4" style={{ background: "#08090d" }}>
+    <div className="h-full overflow-y-auto flex flex-col items-center justify-center px-4" style={{ background: "#08090d" }}>
       {/* Background glow */}
       <div
         className="pointer-events-none fixed inset-0"
