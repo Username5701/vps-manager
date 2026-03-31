@@ -79,7 +79,9 @@ function AppRoutes() {
       </Route>
 
       <Route>
-        <NotFound />
+        <ProtectedLayout>
+          <NotFound />
+        </ProtectedLayout>
       </Route>
     </Switch>
   );

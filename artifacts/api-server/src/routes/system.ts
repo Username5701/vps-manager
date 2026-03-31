@@ -105,11 +105,20 @@ router.post("/system/clear-cache", (_req, res) => {
     if (syncErr) {
       return res.status(500).json({ error: "sync failed: " + syncErr.message });
     }
-    exec("echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true", (cacheErr) => {
-      const msg = cacheErr
-        ? "Filesystem synced (cache drop requires root privileges)"
-        : "Filesystem synced and page cache cleared";
-      res.json({ ok: true, message: msg });
+    exec("echo 3 > /proc/sys/vm/drop_caches", (cacheErr) => {
+      if (cacheErr) {
+        res.json({
+          ok: true,
+          cacheDropped: false,
+          message: "Filesystem synced. Cache drop skipped — root privileges required.",
+        });
+      } else {
+        res.json({
+          ok: true,
+          cacheDropped: true,
+          message: "Filesystem synced and page cache dropped.",
+        });
+      }
     });
   });
 });

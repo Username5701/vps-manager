@@ -264,7 +264,7 @@ export default function HomePage() {
               icon={Cpu}
               label="CPU Load"
               value={`${Math.min(100, cpuLoad).toFixed(1)}%`}
-              sub={`${info?.cpu.cores} cores · ${info?.cpu.loadAvg["1m"]} / ${info?.cpu.loadAvg["5m"]} / ${info?.cpu.loadAvg["15m"]}`}
+              sub={`${info?.cpu.model ?? "—"} · ${info?.cpu.cores} cores · avg ${info?.cpu.loadAvg["1m"]} / ${info?.cpu.loadAvg["5m"]} / ${info?.cpu.loadAvg["15m"]}`}
               progress={cpuLoad}
               color="#6e5cff"
             />
@@ -272,7 +272,7 @@ export default function HomePage() {
               icon={MemoryStick}
               label="Memory"
               value={`${info?.memory.usagePercent ?? 0}%`}
-              sub={`${fmtBytes(info?.memory.used ?? 0)} / ${fmtBytes(info?.memory.total ?? 0)}`}
+              sub={`${fmtBytes(info?.memory.used ?? 0)} used · ${fmtBytes(info?.memory.free ?? 0)} free / ${fmtBytes(info?.memory.total ?? 0)}`}
               progress={memPct}
               color="#0ff4c6"
             />
