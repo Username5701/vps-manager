@@ -194,7 +194,8 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
 
   useEffect(() => {
     setSelectedFile(null);
-    setRightPanel(null);
+    // Only close file viewer on navigation — terminal and logs should persist
+    setRightPanel((prev) => (prev === "file" ? null : prev));
     setIsEditing(false);
   }, [currentPath]);
 
