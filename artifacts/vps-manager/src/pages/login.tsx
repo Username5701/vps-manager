@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { KeyRound, Loader2, Eye, EyeOff } from "lucide-react";
+import { KeyRound, Loader2, Eye, EyeOff, ChevronDown, ChevronUp, Terminal } from "lucide-react";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [showKey, setShowKey] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSetup, setShowSetup] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -110,8 +111,42 @@ export default function LoginPage() {
           </form>
         </div>
 
+        {/* .env setup hint */}
+        <div className="mt-5 w-full max-w-sm">
+          <button
+            onClick={() => setShowSetup((s) => !s)}
+            className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            style={{ background: "rgba(110,92,255,.07)", border: "1px solid rgba(110,92,255,.18)" }}
+          >
+            <span className="flex items-center gap-2">
+              <Terminal className="w-3.5 h-3.5" style={{ color: "#0ff4c6" }} />
+              Deploying? Configure your keys via <code className="font-mono">.env</code>
+            </span>
+            {showSetup ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+
+          {showSetup && (
+            <div className="mt-2 rounded-xl p-4 text-xs font-mono"
+              style={{ background: "rgba(8,9,13,.9)", border: "1px solid rgba(110,92,255,.2)" }}>
+              <p className="text-muted-foreground mb-2 font-sans">Create a <span className="text-[#0ff4c6]">.env</span> file in your project root:</p>
+              <pre className="leading-6 text-[#a8a0ff] whitespace-pre-wrap">{`# Required — your API access key
+API_KEY=your-secret-key-here
+
+# Required — session encryption secret
+SESSION_SECRET=any-random-string
+
+# Optional — GitHub personal access token
+# (needed for Dev page profile editing)
+GITHUB_PERSONAL_ACCESS_TOKEN=ghp_...`}</pre>
+              <p className="text-muted-foreground font-sans mt-3 text-[11px]">
+                The <span className="text-[#0ff4c6]">API_KEY</span> value is what you enter above to sign in.
+              </p>
+            </div>
+          )}
+        </div>
+
         <p className="text-center text-xs text-muted-foreground mt-6">
-          XCASPER MANAGER — Secure VPS control panel
+          XCASPER MANAGER — We believe in building together
         </p>
       </div>
     </div>
