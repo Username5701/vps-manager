@@ -3,7 +3,7 @@ import https from "https";
 
 const router = Router();
 
-const GH_TOKEN = process.env.GITHUB_PERSONAL_ACCESS_TOKEN ?? "";
+const GH_TOKEN = process.env.GITHUB_PERSONAL_ACCESS_TOKEN2 ?? process.env.GITHUB_PERSONAL_ACCESS_TOKEN ?? "";
 const GH_BASE = "api.github.com";
 
 function ghRequest(
