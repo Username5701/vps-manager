@@ -996,6 +996,8 @@ export default function DevPage() {
           </div>
         </section>
 
+      </div>
+
       <Footer />
     </div>
   );
