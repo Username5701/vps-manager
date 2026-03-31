@@ -926,10 +926,10 @@ export default function DevPage() {
                   style={{ background: "rgba(110,92,255,.18)", color: "#a8a0ff", border: "1px solid rgba(110,92,255,.3)" }}>
                   <BookOpen className="w-4 h-4" /> All Repositories
                 </a>
-                <a href={`${user.html_url}?tab=followers`} target="_blank" rel="noopener noreferrer"
+                <a href={user.html_url} target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
                   style={{ background: "rgba(15,244,198,.08)", color: "#0ff4c6", border: "1px solid rgba(15,244,198,.18)" }}>
-                  <Users className="w-4 h-4" /> Followers
+                  <Users className="w-4 h-4" /> Follow
                 </a>
               </div>
             </Card>

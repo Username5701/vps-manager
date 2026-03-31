@@ -44,6 +44,9 @@ Thumbs.db
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
-# Replit
+# Replit — internal files, not for the public repo
 .cache/
 .local/
+replit.md
+attached_assets/
+**/.replit-artifact/

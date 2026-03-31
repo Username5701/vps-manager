@@ -12,11 +12,16 @@
 
 No SaaS. No subscriptions. No telemetry. Deploy it on your own server, secure it with your own API key, and manage your filesystem from anywhere.
 
+> [!IMPORTANT]
+> **You must set `API_KEY` in your `.env` file before running the app.**
+> This is the key you enter on the login screen. Without it, the server will refuse all requests.
+> See [Quick Start → Create a `.env` file](#3-create-a-env-file) below.
+
 ---
 
 ## Screenshot
 
-![XCASPER MANAGER — System Dashboard](docs/screenshot-dashboard.png)
+![XCASPER MANAGER — Login](docs/screenshot-dashboard.jpg)
 
 ---
 
@@ -60,13 +65,22 @@ pnpm install
 
 ### 3. Create a `.env` file
 
+> [!WARNING]
+> **Never commit `.env` to version control.** It is already in `.gitignore`.
+
+Create a file named `.env` in the **project root**:
+
 ```env
-# Required — the key you enter on the login screen
+# ── Required ────────────────────────────────────────────────────────────────
+# The key you type on the login screen. Make it long and random.
+# You can rotate it later from the Settings page inside the app.
 API_KEY=your-secret-key-here
 
-# Required — session encryption secret (any random string)
-SESSION_SECRET=any-random-string
+# Session encryption secret — any long random string works
+SESSION_SECRET=any-random-string-here
 ```
+
+> **Tip:** generate a strong key with `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 
 ### 4. Development
 
