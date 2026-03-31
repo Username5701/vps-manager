@@ -298,18 +298,30 @@ router.get("/system/sites", (_req, res) => {
     git: GitInfo | null;
   }
 
+  const findGitRoot = (startDir: string): string | null => {
+    let cur = startDir;
+    for (let i = 0; i < 8; i++) {
+      if (fs.existsSync(path.join(cur, ".git"))) return cur;
+      const parent = path.dirname(cur);
+      if (parent === cur) break;
+      cur = parent;
+    }
+    return null;
+  };
+
   const getGitInfo = (dir: string): GitInfo | null => {
-    if (!dir || !fs.existsSync(path.join(dir, ".git"))) return null;
+    if (!dir) return null;
+    const gitRoot = findGitRoot(dir);
+    if (!gitRoot) return null;
     try {
-      const rawRemote = run(`git -C "${dir}" remote get-url origin 2>/dev/null`);
+      const rawRemote = run(`git -C "${gitRoot}" remote get-url origin 2>/dev/null`);
       if (!rawRemote) return null;
       // Strip embedded tokens from HTTPS URLs
       const remote = rawRemote.replace(/https?:\/\/[^@]+@/, "https://");
       // Branch — use remote default branch if local HEAD has no commits yet
-      let branch = run(`git -C "${dir}" rev-parse --abbrev-ref HEAD 2>/dev/null`);
+      let branch = run(`git -C "${gitRoot}" rev-parse --abbrev-ref HEAD 2>/dev/null`);
       if (!branch || branch === "HEAD") {
-        // Uninitialised checkout: read remote default branch from FETCH_HEAD file
-        const fetchHeadFile = path.join(dir, ".git", "FETCH_HEAD");
+        const fetchHeadFile = path.join(gitRoot, ".git", "FETCH_HEAD");
         if (fs.existsSync(fetchHeadFile)) {
           const fh = fs.readFileSync(fetchHeadFile, "utf8").split("\n")[0];
           branch = fh.match(/branch '([^']+)'/)?.[1] ?? "main";
@@ -318,11 +330,11 @@ router.get("/system/sites", (_req, res) => {
         }
       }
       // Last commit — try local HEAD first, then FETCH_HEAD
-      let lastCommit = run(`git -C "${dir}" log -1 --format="%h %s" 2>/dev/null`);
+      let lastCommit = run(`git -C "${gitRoot}" log -1 --format="%h %s" 2>/dev/null`);
       if (!lastCommit) {
-        lastCommit = run(`git -C "${dir}" log -1 --format="%h %s" FETCH_HEAD 2>/dev/null`);
+        lastCommit = run(`git -C "${gitRoot}" log -1 --format="%h %s" FETCH_HEAD 2>/dev/null`);
       }
-      const dirty = run(`git -C "${dir}" status --porcelain 2>/dev/null`).length > 0;
+      const dirty = run(`git -C "${gitRoot}" status --porcelain 2>/dev/null`).length > 0;
       return { branch, remote, lastCommit, dirty };
     } catch { return null; }
   };
