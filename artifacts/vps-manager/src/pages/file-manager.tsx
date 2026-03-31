@@ -1009,6 +1009,7 @@ export default function FileManager({ initialPanel = null }: FileManagerProps) {
                 value={termCmd}
                 onChange={(e) => setTermCmd(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") runCommand(); }}
+                onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ block: "nearest", behavior: "smooth" }), 150)}
                 placeholder="command…"
                 className="flex-1 font-mono text-sm bg-transparent border-0 focus-visible:ring-0 px-0 h-8"
                 autoCapitalize="none"

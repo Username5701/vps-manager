@@ -36,7 +36,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden" style={{ background: "#08090d" }}>
+    <div className="flex flex-col overflow-hidden" style={{ height: "100dvh", background: "#08090d" }}>
       <Navbar />
       <main className="flex-1 flex flex-col min-h-0 overflow-hidden">
         {children}
